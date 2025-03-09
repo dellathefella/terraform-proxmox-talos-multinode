@@ -1,0 +1,53 @@
+load_module /usr/lib/nginx/modules/ngx_stream_module.so;
+
+events {
+    worker_connections 786;
+}
+
+stream {
+    upstream talos_servers_k8s_api {
+        %{ for host in talos_server_hosts ~}
+        server ${host};
+        %{ endfor ~}
+    }
+
+    server {
+        listen 6443;
+        proxy_pass talos_servers_k8s_api;
+    }
+
+    upstream talos_servers_talos_api {
+        %{ for host in talos_server_hosts ~}
+        server ${host};
+        %{ endfor ~}
+    }
+
+    server {
+        listen 50000;
+        proxy_pass talos_servers_talos_api;
+    }
+
+    upstream talos_nodes_ingress_http {
+        %{ for ip in talos_nodes ~}
+        server ${ip}:80;
+        %{ endfor ~}
+    }
+
+    upstream talos_nodes_ingress_https {
+        %{ for ip in talos_nodes ~}
+        server ${ip}:443;
+        %{ endfor ~}
+    }
+
+    server {
+        listen 80;
+        proxy_pass talos_nodes_ingress_http;
+    }
+
+    server {
+        listen 443;
+        proxy_pass talos_nodes_ingress_https;
+    }
+
+
+}

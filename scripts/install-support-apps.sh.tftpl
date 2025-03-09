@@ -1,0 +1,19 @@
+#!/bin/bash
+export HTTP_PROXY="${http_proxy}"
+export HTTPS_PROXY="${http_proxy}"
+export http_proxy="${http_proxy}"
+export https_proxy="${http_proxy}"
+
+nginx() {
+    echo "\e[1;33;4;44mProvisioning delay to ensure VM is online.\e[0m" &&
+    sleep 10 &&
+    %{if ubuntu_version == 24 } 
+    DEBIAN_FRONTEND=noninteractive sudo -E apt install libnginx-mod-stream -y &&
+    %{endif}
+    DEBIAN_FRONTEND=noninteractive sudo -E apt install nginx -y &&
+    echo "\e[1;33;4;44mNGINX installed.\e[0m"
+}
+
+sudo sed -i 's/#$nrconf{restart} = '"'"'i'"'"';/$nrconf{restart} = '"'"'a'"'"';/g' /etc/needrestart/needrestart.conf &&
+sleep 10 &&
+nginx
