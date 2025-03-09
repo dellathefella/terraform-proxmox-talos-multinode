@@ -125,7 +125,7 @@ variable "node_pools" {
       cores          = number,
       memory         = number,
       datastore_id   = string,
-    install_disk   = optional(string, "/dev/sda")
+      install_disk   = optional(string, "/dev/sda")
       disk_size      = string,
       network_bridge = string,
       additonal_storage = optional(object({

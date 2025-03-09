@@ -20,7 +20,7 @@ resource "proxmox_virtual_environment_download_file" "latest_ubuntu_24_noble_qco
 resource "proxmox_virtual_environment_vm" "talos-support" {
   name        = join("-", [var.cluster_name, "support"])
   description = "Support node for Talos Cluster - ${join("-", [var.cluster_name, "support"])}"
-  tags        = ["terraform", "ubuntu", "${var.cluster_name}"]
+  tags        = ["terraform", "ubuntu", "${var.cluster_name}","support"]
 
   node_name = length(var.proxmox_support_node) == 0 ? var.proxmox_node : var.proxmox_support_node
 
@@ -46,6 +46,7 @@ resource "proxmox_virtual_environment_vm" "talos-support" {
     datastore_id = local.support_node_settings.datastore_id
     file_id      = proxmox_virtual_environment_download_file.latest_ubuntu_24_noble_qcow2_img.id
     interface    = "virtio0"
+    size         = local.support_node_settings.disk_size
   }
 
   initialization {

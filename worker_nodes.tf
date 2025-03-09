@@ -21,11 +21,11 @@ resource "proxmox_virtual_environment_vm" "talos-worker" {
   depends_on = [
     proxmox_virtual_environment_vm.talos-master
   ]
-  for_each = local.mapped_worker_nodes
+  for_each    = local.mapped_worker_nodes
   description = "Worker node for Talos Cluster - ${var.cluster_name}"
-  tags        = ["terraform", "ubuntu", "${var.cluster_name}","k8s-worker-node"]
-  name = "${var.cluster_name}-${each.value.name}"
-  node_name = each.value.node_name
+  tags        = ["terraform", "talos", "${var.cluster_name}", "k8s-worker-node"]
+  name        = "${var.cluster_name}-${each.value.name}-${each.value.i}"
+  node_name   = each.value.node_name
 
   # if agent is not enabled, the VM may not be able to shutdown properly, and may need to be forced off
   stop_on_destroy = true
@@ -53,6 +53,7 @@ resource "proxmox_virtual_environment_vm" "talos-worker" {
     datastore_id = each.value.datastore_id
     file_id      = proxmox_virtual_environment_download_file.talos_image[each.value.node_name].id
     interface    = "virtio0"
+    size         = each.value.disk_size
   }
 
   initialization {

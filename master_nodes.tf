@@ -20,7 +20,7 @@ resource "proxmox_virtual_environment_vm" "talos-master" {
   for_each    = local.mapped_master_nodes
   name        = each.value.name
   description = "Master node for Talos Cluster - ${var.cluster_name}"
-  tags        = ["terraform", "ubuntu", "${var.cluster_name}", "k8s-master-node"]
+  tags        = ["terraform", "talos", "${var.cluster_name}", "k8s-master-node"]
 
   node_name = each.value.node_name
 
@@ -50,6 +50,7 @@ resource "proxmox_virtual_environment_vm" "talos-master" {
     datastore_id = each.value.datastore_id
     file_id      = proxmox_virtual_environment_download_file.talos_image[each.value.node_name].id
     interface    = "virtio0"
+    size         = each.value.disk_size
   }
 
   initialization {
