@@ -31,11 +31,6 @@ resource "proxmox_virtual_environment_vm" "talos-master" {
     enabled = true
   }
 
-  startup {
-    up_delay   = "60"
-    down_delay = "60"
-  }
-
   cpu {
     cores = each.value.cores
     type  = "x86-64-v2-AES" # recommended for modern CPUs

@@ -27,11 +27,6 @@ resource "proxmox_virtual_environment_vm" "talos-support" {
   # if agent is not enabled, the VM may not be able to shutdown properly, and may need to be forced off
   stop_on_destroy = true
 
-  startup {
-    up_delay   = "60"
-    down_delay = "60"
-  }
-
   cpu {
     cores = local.support_node_settings.cores
     type  = "x86-64-v2-AES" # recommended for modern CPUs
