@@ -2,16 +2,22 @@ resource "talos_machine_secrets" "cluster_machine_secret" {}
 
 
 data "talos_client_configuration" "cluster_client_configuration" {
+  depends_on = [
+    null_resource.talos_nginx_install
+  ]
   cluster_name         = var.cluster_name
   client_configuration = talos_machine_secrets.cluster_machine_secret.client_configuration
-  endpoints            = concat([for k, v in local.listed_control_plane_nodes : v.ip], [local.support_lxc_ip])
+  endpoints            = concat([for k, v in local.listed_control_plane_nodes : v.ip], [local.cluster_lb_lxc_ip])
   nodes                = [for k, v in local.listed_worker_nodes : v.ip]
 }
 
 ### Control plane nodes ###
 data "talos_machine_configuration" "control_plane" {
+  depends_on = [
+    null_resource.talos_nginx_install
+  ]
   cluster_name     = var.cluster_name
-  cluster_endpoint = "https://${local.support_lxc_ip}:6443"
+  cluster_endpoint = "https://${local.cluster_lb_lxc_ip}:6443"
   machine_type     = "controlplane"
   machine_secrets  = talos_machine_secrets.cluster_machine_secret.machine_secrets
 }
@@ -19,7 +25,8 @@ data "talos_machine_configuration" "control_plane" {
 
 resource "talos_machine_configuration_apply" "control_plane" {
   depends_on = [
-    data.talos_machine_configuration.control_plane
+    data.talos_machine_configuration.control_plane,
+    null_resource.talos_nginx_install
   ]
   for_each                    = { for node in local.listed_control_plane_nodes : "${node.name}" => node }
   client_configuration        = talos_machine_secrets.cluster_machine_secret.client_configuration
@@ -44,7 +51,10 @@ resource "talos_machine_configuration_apply" "control_plane" {
 }
 
 resource "talos_machine_bootstrap" "control_plane" {
-  depends_on           = [talos_machine_configuration_apply.control_plane]
+  depends_on = [
+    talos_machine_configuration_apply.control_plane,
+    null_resource.talos_nginx_install
+  ]
   client_configuration = talos_machine_secrets.cluster_machine_secret.client_configuration
   node                 = [for v in local.listed_control_plane_nodes : v.ip][0]
 }
@@ -52,8 +62,11 @@ resource "talos_machine_bootstrap" "control_plane" {
 
 ## Worker nodes ###
 data "talos_machine_configuration" "worker" {
+  depends_on = [
+    null_resource.talos_nginx_install
+  ]
   cluster_name     = var.cluster_name
-  cluster_endpoint = "https://${local.support_lxc_ip}:6443"
+  cluster_endpoint = "https://${local.cluster_lb_lxc_ip}:6443"
   machine_type     = "worker"
   machine_secrets  = talos_machine_secrets.cluster_machine_secret.machine_secrets
 }
@@ -61,7 +74,8 @@ data "talos_machine_configuration" "worker" {
 
 resource "talos_machine_configuration_apply" "worker" {
   depends_on = [
-    talos_machine_bootstrap.control_plane
+    talos_machine_bootstrap.control_plane,
+    null_resource.talos_nginx_install
   ]
   for_each                    = { for node in local.listed_worker_nodes : "${node.name}-${node.i}" => node }
   client_configuration        = talos_machine_secrets.cluster_machine_secret.client_configuration
@@ -70,7 +84,7 @@ resource "talos_machine_configuration_apply" "worker" {
   config_patches = [
     templatefile("${path.module}/config/worker.yaml.tmpl", {
       hostname     = "${var.cluster_name}-${each.key}",
-      node_taints = each.value.taints
+      node_taints  = each.value.taints
       install_disk = each.value.install_disk
       #   cilium_install = file("${path.module}/kubernetes/cilium-install.yaml")
       #   zfs_setup      = file("${path.module}/kubernetes/zfs-setup.yaml")
@@ -87,7 +101,10 @@ resource "talos_machine_configuration_apply" "worker" {
 
 
 resource "talos_cluster_kubeconfig" "cluster_kubeconfig" {
-  depends_on           = [talos_machine_bootstrap.control_plane]
+  depends_on = [
+    talos_machine_bootstrap.control_plane,
+    null_resource.talos_nginx_install
+  ]
   client_configuration = talos_machine_secrets.cluster_machine_secret.client_configuration
   node                 = [for v in local.listed_control_plane_nodes : v.ip][0]
 }

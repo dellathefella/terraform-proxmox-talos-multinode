@@ -47,23 +47,25 @@ variable "cluster_name" {
   description = "Name of the cluster used for prefixing cluster components (ie nodes)."
 }
 
-variable "support_lxc_settings" {
-  description = "Default settings values for support LXC"
+variable "cluster_lb_lxc_settings" {
+  description = "Default settings values for cluster LB LXC"
   type = object({
-    node_name = string,
+    node_name      = string,
     cores          = number,
     memory         = number,
     datastore_id   = string,
     disk_size      = number,
     network_bridge = string,
+    additional_lb_ports = optional(list(number))
   })
   default = {
-    node_name = "pve"
+    node_name      = "pve"
     cores          = 2
-    memory         = 1024
+    memory         = 512
     datastore_id   = "local-lvm"
     disk_size      = 4
     network_bridge = "vmbr0"
+    additional_lb_ports = []
   }
 }
 variable "control_plane_nodes" {
@@ -88,7 +90,7 @@ variable "node_pools" {
     node_name = string,
     node_pool_settings = object({
       name           = string,
-      taints         = optional(list(string),[]),
+      taints         = optional(list(string), []),
       cores          = number,
       memory         = number,
       datastore_id   = string,
