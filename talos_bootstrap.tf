@@ -35,6 +35,7 @@ resource "talos_machine_configuration_apply" "control_plane" {
   config_patches = [
     templatefile("${path.module}/config/control-plane.yaml.tmpl", {
       hostname         = "${each.value.name}"
+      cluster_name = var.cluster_name
       install_disk     = each.value.install_disk
       longhorn_install = file("${path.module}/kubernetes/longhorn-v1.7.0.yaml")
       flux_install     = file("${path.module}/kubernetes/flux-v1.5.0.yaml")

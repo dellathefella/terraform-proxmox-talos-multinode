@@ -117,7 +117,8 @@ resource "null_resource" "talos_nginx_config" {
     config_change       = filemd5("${path.module}/config/nginx.conf.tftpl")
     control_plane_nodes_change = "${length(local.listed_control_plane_nodes)}"
     worker_nodes_change = "${length(local.listed_worker_nodes)}"
-    additional_lb_ports = "${length(local.cluster_lb_lxc_settings.additional_lb_ports)}"
+    additional_lb_worker_node_ports = "${length(local.cluster_lb_lxc_settings.additional_lb_worker_node_ports)}"
+    additional_lb_control_plane_node_ports = "${length(local.cluster_lb_lxc_settings.additional_lb_control_plane_node_ports)}"
   }
 
   connection {
@@ -130,10 +131,9 @@ resource "null_resource" "talos_nginx_config" {
   provisioner "file" {
     destination = "/tmp/nginx.conf"
     content = templatefile("${path.module}/config/nginx.conf.tftpl", {
-      talos_control_plane_nodes = [for control_plane in local.listed_control_plane_nodes :
-        "${control_plane.ip}:6443"
-      ]
-      additional_lb_ports = local.cluster_lb_lxc_settings.additional_lb_ports
+      talos_control_plane_nodes = [for control_plane_node in local.listed_control_plane_nodes: control_plane_node.ip]
+      additional_lb_worker_node_ports = local.cluster_lb_lxc_settings.additional_lb_worker_node_ports
+      additional_lb_control_plane_node_ports = local.cluster_lb_lxc_settings.additional_lb_control_plane_node_ports
       talos_nodes = concat([for control_plane in local.listed_control_plane_nodes : control_plane.ip], [for worker_node in local.listed_worker_nodes : worker_node.ip])
     })
   }

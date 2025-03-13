@@ -5,16 +5,52 @@ events {
 }
 
 stream {
-    upstream talos_servers_k8s_api {
+    upstream talos_control_plane_k8s_api {
         %{ for host in talos_control_plane_nodes ~}
-        server ${host};
+        server ${host}:6443;
         %{ endfor ~}
     }
 
     server {
         listen 6443;
-        proxy_pass talos_servers_k8s_api;
+        proxy_pass talos_control_plane_k8s_api;
     }
+
+    upstream talos_api_50000 {
+        %{ for host in talos_nodes ~}
+        server ${host}:50000;
+        %{ endfor ~}
+    }
+
+    server {
+        listen 50000;
+        proxy_pass talos_api_50000;
+    }
+
+    upstream talos_api_50001 {
+        %{ for host in talos_nodes ~}
+        server ${host}:50001;
+        %{ endfor ~}
+    }
+
+    server {
+        listen 50001;
+        proxy_pass talos_api_50001;
+    }
+
+%{ for additional_lb_control_plane_node_port in additional_lb_control_plane_node_ports ~}
+    upstream talos_control_plane_${additional_lb_control_plane_node_port} {
+        %{ for host in talos_control_plane_nodes ~}
+        server ${host}:${additional_lb_control_plane_node_port};
+        %{ endfor ~}
+    }
+
+    server {
+        listen ${additional_lb_control_plane_node_port};
+        proxy_pass talos_control_plane_${additional_lb_control_plane_node_port};
+    }
+%{ endfor ~}
+
 
     upstream talos_nodes_ingress_https {
         %{ for ip in talos_nodes ~}
@@ -38,16 +74,16 @@ stream {
         proxy_pass talos_nodes_ingress_http;
     }
     
-%{ for additional_lb_port in additional_lb_ports ~}
-    upstream talos_${additional_lb_port} {
+%{ for additional_lb_worker_node_port in additional_lb_worker_node_ports ~}
+    upstream talos_workers_${additional_lb_worker_node_port} {
         %{ for ip in talos_nodes ~}
-        server ${ip}:${additional_lb_port};
+        server ${ip}:${additional_lb_worker_node_port};
         %{ endfor ~}
     }
 
     server {
-        listen ${additional_lb_port};
-        proxy_pass talos_${additional_lb_port};
+        listen ${additional_lb_worker_node_port};
+        proxy_pass talos_workers_${additional_lb_worker_node_port};
     }
 %{ endfor ~}
 }

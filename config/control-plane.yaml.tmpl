@@ -18,6 +18,7 @@ machine:
           - rw
 
 cluster:
+  clusterName: ${cluster_name}
   allowSchedulingOnControlPlanes: false
   inlineManifests:
   - name: longhorn-install

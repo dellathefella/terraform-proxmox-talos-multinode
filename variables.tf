@@ -56,7 +56,8 @@ variable "cluster_lb_lxc_settings" {
     datastore_id   = string,
     disk_size      = number,
     network_bridge = string,
-    additional_lb_ports = optional(list(number))
+    additional_lb_worker_node_ports = optional(list(number),[])
+    additional_lb_control_plane_node_ports = optional(list(number),[]) 
   })
   default = {
     node_name      = "pve"
@@ -65,7 +66,8 @@ variable "cluster_lb_lxc_settings" {
     datastore_id   = "local-lvm"
     disk_size      = 4
     network_bridge = "vmbr0"
-    additional_lb_ports = []
+    additional_lb_worker_node_ports = []
+    additional_lb_control_plane_node_ports = []
   }
 }
 variable "control_plane_nodes" {
