@@ -19,8 +19,8 @@ resource "proxmox_virtual_environment_download_file" "latest_ubuntu_24_noble_lxc
 
 
 resource "proxmox_virtual_environment_container" "cluster_lb" {
-  description = "Support LXC for Talos Cluster - ${join("-", [var.cluster_name, "support"])}"
-  tags        = ["terraform", "ubuntu", "${var.cluster_name}", "support", "lxc"]
+  description = "Support LXC for Talos Cluster - ${var.cluster_name}-cluster-lb"
+  tags        = ["terraform", "ubuntu", "${var.cluster_name}", "nginx", "lxc"]
 
   node_name    = local.cluster_lb_lxc_settings.node_name
   unprivileged = true
@@ -39,7 +39,7 @@ resource "proxmox_virtual_environment_container" "cluster_lb" {
   }
 
   initialization {
-    hostname = "${var.cluster_name}-support"
+    hostname = "${var.cluster_name}-cluster-lb"
     ip_config {
       ipv4 {
         address = "${local.cluster_lb_lxc_ip}/${local.lan_subnet_cidr_bitnum}"
