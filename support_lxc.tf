@@ -1,6 +1,6 @@
 locals {
-  support_node_settings = var.support_node_settings
-  support_node_ip       = cidrhost(var.control_plane_subnet, 0)
+  support_lxc_settings = var.support_lxc_settings
+  support_lxc_ip       = cidrhost(var.control_plane_subnet, 0)
 }
 
 locals {
@@ -17,72 +17,68 @@ resource "proxmox_virtual_environment_download_file" "latest_ubuntu_24_noble_qco
 
 
 
-resource "proxmox_virtual_environment_vm" "talos-support" {
-  name        = join("-", [var.cluster_name, "support"])
-  description = "Support node for Talos Cluster - ${join("-", [var.cluster_name, "support"])}"
-  tags        = ["terraform", "ubuntu", "${var.cluster_name}","support"]
+resource "proxmox_virtual_environment_vm" "talos_support" {
+  description = "Support LXC for Talos Cluster - ${join("-", [var.cluster_name, "support"])}"
+  tags        = ["terraform", "ubuntu", "${var.cluster_name}","support","lxc"]
 
-  node_name = length(var.proxmox_support_node) == 0 ? var.proxmox_node : var.proxmox_support_node
-
-  # if agent is not enabled, the VM may not be able to shutdown properly, and may need to be forced off
-  stop_on_destroy = true
+  node_name = support_lxc_settings.node_name
 
   cpu {
-    cores = local.support_node_settings.cores
-    type  = "x86-64-v2-AES" # recommended for modern CPUs
+    cores = local.support_lxc_settings.cores
   }
 
   memory {
-    dedicated = local.support_node_settings.memory
-    floating  = local.support_node_settings.memory # set equal to dedicated to enable ballooning
+    dedicated = local.support_lxc_settings.memory
+    swap  = local.support_lxc_settings.memory/2
   }
 
   disk {
-    datastore_id = local.support_node_settings.datastore_id
-    file_id      = proxmox_virtual_environment_download_file.latest_ubuntu_24_noble_qcow2_img.id
-    interface    = "virtio0"
-    size         = local.support_node_settings.disk_size
+    datastore_id = local.support_lxc_settings.datastore_id
+    size         = local.support_lxc_settings.disk_size
   }
 
   initialization {
+    hostname = "${var.cluster_name}-support"
     ip_config {
       ipv4 {
-        address = "${local.support_node_ip}/${local.lan_subnet_cidr_bitnum}"
+        address = "${local.support_lxc_ip}/${local.lan_subnet_cidr_bitnum}"
         gateway = var.network_gateway
       }
     }
 
     user_account {
       keys     = [trimspace(file(var.authorized_keys_file))]
-      username = local.support_node_settings.user
+      password = random_password.support_lxc_password.result
     }
 
   }
 
-  network_device {
-    bridge = local.support_node_settings.network_bridge
-  }
-
-  operating_system {
-    type = "l26"
-  }
-
-  tpm_state {
-    version = "v2.0"
+  network_interface  {
+    name = local.support_lxc_settings.network_bridge
   }
 
   connection {
     type        = "ssh"
-    user        = local.support_node_settings.user
-    host        = local.support_node_ip
+    user        = "root"
+    host        = local.support_lxc_ip
     private_key = file(var.authorized_private_key_file)
+  }
+  
+  operating_system {
+    template_file_id = proxmox_virtual_environment_download_file.latest_ubuntu_22_jammy_lxc_img.id
+    # Or you can use a volume ID, as obtained from a "pvesm list <storage>"
+    # template_file_id = "local:vztmpl/jammy-server-cloudimg-amd64.tar.gz"
+    type             = "ubuntu"
+  }
+
+  features {
+    nesting = true
   }
 
   provisioner "file" {
     destination = "/tmp/install.sh"
     content = templatefile("${path.module}/scripts/install-support-apps.sh.tftpl", {
       http_proxy     = var.http_proxy
-      ubuntu_version = var.ubuntu_version
     })
   }
 
@@ -95,7 +91,7 @@ resource "proxmox_virtual_environment_vm" "talos-support" {
   }
 }
 
-resource "random_password" "support-user-password" {
+resource "random_password" "support_lxc_password" {
   length           = 16
   special          = false
   override_special = "_%@"
@@ -104,7 +100,7 @@ resource "random_password" "support-user-password" {
 resource "null_resource" "talos_nginx_config" {
 
   depends_on = [
-    proxmox_virtual_environment_vm.talos-support
+    proxmox_virtual_environment_vm.talos_support
   ]
 
   triggers = {
@@ -115,8 +111,8 @@ resource "null_resource" "talos_nginx_config" {
 
   connection {
     type        = "ssh"
-    user        = local.support_node_settings.user
-    host        = local.support_node_ip
+    user        = "root"
+    host        = local.support_lxc_ip
     private_key = file(var.authorized_private_key_file)
   }
 
