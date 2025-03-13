@@ -16,3 +16,12 @@ machine:
           - bind
           - rshared
           - rw
+    extraConfig:
+%{ if length(node_taints) > 0 ~}
+      registerWithTaints:
+%{ for node_taint in node_taints ~}
+        - key: ${node_taint}
+          effect: "NoSchedule"
+          value: "true"
+%{ endfor ~}
+%{ endif ~}

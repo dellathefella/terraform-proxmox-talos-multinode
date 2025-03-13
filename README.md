@@ -4,9 +4,7 @@ A module for spinning up an expandable and flexible K3s server for your HomeLab 
 
 ## Features
 - Fully automated. No need to remote into a VM; even for a kubeconfig
-- Built in and automatically configured external loadbalancer (both K3s API and ingress)
-- Support for embedded etcd and MariaDB auto configuration [Example](example/README.md)
-- Static(ish) MAC addresses for reproducible DHCP reservations
+- Built in and automatically configured external loadbalancer (both K8s API and ingress)
 - Node pools to easily scale and to handle many kinds of workloads
 - Master nodes with custom topology for your use cases.
 - Pure Terraform - no Ansible needed.
@@ -15,34 +13,13 @@ A module for spinning up an expandable and flexible K3s server for your HomeLab 
 ## Prerequisites
 - Proxmox node(s) running 8.2 or higher
 - Proxmox nodes with sufficient capacity for all nodes
-- A cloneable or template VM that supports Cloud-init and is based on Debian(ideally Ubuntu server) Guide outlined below on how to do that.
+- SSH Keys copied to nodes that will have Talos Cluster created.
 - At least 2 CIDR ranges for master and worker nodes NOT handed out by DHCP (All Nodes are configured with static IPs from these ranges)
 
-## Creating the Ubuntu 22.04 or 24.04 template(s)
-Because of limitations of the way Proxmox uses templates we need to create a template on each node with an incrementing QMID. These templates will be identical but the QMID will be different. You can delete these when you are done if you don't plan on modifying the cluster.
+## The BPG Provider does certain functions that require SSH on each Proxmox node your SSH private key will need to be copied.
 ```sh
-
-# Ubuntu 22.04
-export QMID=8002
-cd /var/lib/vz/template/iso &&
-wget https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img &&
-qm create $QMID --name "ubuntu-2204-cloudinit-template" --memory 4096 --cores 2 --net0 virtio,bridge=vmbr0 &&
-qm importdisk $QMID jammy-server-cloudimg-amd64.img local-lvm &&
-qm set $QMID --scsihw virtio-scsi-pci --scsi0 local-lvm:vm-$QMID-disk-0 &&
-qm set $QMID --ide2 local-lvm:cloudinit &&
-qm set $QMID --boot c --bootdisk scsi0 &&
-qm template $QMID
-
-# Ubuntu 24.04
-export QMID=8003
-cd /var/lib/vz/template/iso &&
-wget https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img &&
-qm create $QMID --name "ubuntu-2404-cloudinit-template" --memory 4096 --cores 2 --net0 virtio,bridge=vmbr0 &&
-qm importdisk $QMID noble-server-cloudimg-amd64.img local-lvm &&
-qm set $QMID --scsihw virtio-scsi-pci --scsi0 local-lvm:vm-$QMID-disk-0 &&
-qm set $QMID --ide2 local-lvm:cloudinit &&
-qm set $QMID --boot c --bootdisk scsi0 &&
-qm template $QMID
+# On deployer VM or system.
+ssh-copy-id -i ~/.ssh/id_ed25519.pub root@10.0.5.0
 ```
 
 
@@ -112,7 +89,7 @@ module "k3s" {
   control_plane_subnet = "10.10.2.0/29"
 
   # These are not rolled as a pool but individually.
-  master_nodes = [
+  control_plane_nodes = [
   {
     target_node  = "pve-prd0"
     cores        = 2

@@ -10,7 +10,7 @@ locals {
 
   proxmox_node_names = toset(concat(
     [for mapped_worker_node in local.mapped_worker_nodes : mapped_worker_node.node_name],
-    [for mapped_master_node in local.mapped_master_nodes : mapped_master_node.node_name]
+    [for mapped_master_node in local.mapped_control_plane_nodes : mapped_master_node.node_name]
   ))
 }
 

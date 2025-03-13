@@ -1,26 +1,26 @@
 locals {
-  listed_master_nodes = flatten([
-    for i, master_node in var.master_nodes : merge(master_node, {
-      name = "${var.cluster_name}-master-${i}"
+  listed_control_plane_nodes = flatten([
+    for i, master_node in var.control_plane_nodes : merge(master_node, {
+      name = "${var.cluster_name}-control-plane-${i}"
       i    = i
       # Used to force replacement
     ip = cidrhost(var.control_plane_subnet, i + 1) })
   ])
 
-  mapped_master_nodes = {
-    for node in local.listed_master_nodes : "${node.name}" => node
+  mapped_control_plane_nodes = {
+    for node in local.listed_control_plane_nodes : "${node.name}" => node
   }
 
 }
 
-resource "proxmox_virtual_environment_vm" "talos-master" {
+resource "proxmox_virtual_environment_vm" "talos_control_plane" {
   depends_on = [
-    proxmox_virtual_environment_vm.talos-support
+    proxmox_virtual_environment_container.talos_support
   ]
-  for_each    = local.mapped_master_nodes
+  for_each    = local.mapped_control_plane_nodes
   name        = each.value.name
-  description = "Master node for Talos Cluster - ${var.cluster_name}"
-  tags        = ["terraform", "talos", "${var.cluster_name}", "k8s-master-node"]
+  description = "Control plane node for Talos Cluster - ${var.cluster_name}"
+  tags        = ["terraform", "talos", "${var.cluster_name}", "k8s-control-plane-node"]
 
   node_name = each.value.node_name
 

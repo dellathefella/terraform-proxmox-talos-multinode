@@ -60,7 +60,7 @@ module "k3s" {
   control_plane_subnet = "10.10.2.0/29"
 
   # These are not rolled as a pool but individually.
-  master_nodes = [
+  control_plane_nodes = [
     {
       target_node  = "pve-prd0"
       cores        = 2

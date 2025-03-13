@@ -1,16 +1,16 @@
-output "support_node_ip" {
-  value = local.support_node_ip
+output "support_lxc_ip" {
+  value = local.support_lxc_ip
 }
 
-output "support_node_user" {
-  value = local.support_node_settings.user
+output "support_lxc_user" {
+  value = "root"
 }
 
-output "talos_master_node_ips" {
+output "talos_control_plane_ips" {
   value = [
-    for master_node in local.listed_master_nodes : master_node.ip
+    for control_plane in local.listed_control_plane_nodes : control_plane.ip
   ]
-}
+ }
 
 output "kube_config" {
   description = "Kubernetes configuration file"

@@ -4,26 +4,26 @@ resource "talos_machine_secrets" "cluster_machine_secret" {}
 data "talos_client_configuration" "cluster_client_configuration" {
   cluster_name         = var.cluster_name
   client_configuration = talos_machine_secrets.cluster_machine_secret.client_configuration
-  endpoints            = concat([for k, v in local.listed_master_nodes : v.ip], [local.support_node_ip])
+  endpoints            = concat([for k, v in local.listed_control_plane_nodes : v.ip], [local.support_lxc_ip])
   nodes                = [for k, v in local.listed_worker_nodes : v.ip]
 }
 
 ### Control plane nodes ###
-data "talos_machine_configuration" "controlplane" {
+data "talos_machine_configuration" "control_plane" {
   cluster_name     = var.cluster_name
-  cluster_endpoint = "https://${local.support_node_ip}:6443"
+  cluster_endpoint = "https://${local.support_lxc_ip}:6443"
   machine_type     = "controlplane"
   machine_secrets  = talos_machine_secrets.cluster_machine_secret.machine_secrets
 }
 
 
-resource "talos_machine_configuration_apply" "controlplane" {
+resource "talos_machine_configuration_apply" "control_plane" {
   depends_on = [
-    data.talos_machine_configuration.controlplane
+    data.talos_machine_configuration.control_plane
   ]
-  for_each                    = { for node in local.listed_master_nodes : "${node.name}" => node }
+  for_each                    = { for node in local.listed_control_plane_nodes : "${node.name}" => node }
   client_configuration        = talos_machine_secrets.cluster_machine_secret.client_configuration
-  machine_configuration_input = data.talos_machine_configuration.controlplane.machine_configuration
+  machine_configuration_input = data.talos_machine_configuration.control_plane.machine_configuration
   node                        = each.value.ip
   config_patches = [
     templatefile("${path.module}/config/control-plane.yaml.tmpl", {
@@ -38,22 +38,22 @@ resource "talos_machine_configuration_apply" "controlplane" {
   ]
   lifecycle {
     replace_triggered_by = [
-      proxmox_virtual_environment_vm.talos-master
+      proxmox_virtual_environment_vm.talos_control_plane
     ]
   }
 }
 
-resource "talos_machine_bootstrap" "controlplane" {
-  depends_on           = [talos_machine_configuration_apply.controlplane]
+resource "talos_machine_bootstrap" "control_plane" {
+  depends_on           = [talos_machine_configuration_apply.control_plane]
   client_configuration = talos_machine_secrets.cluster_machine_secret.client_configuration
-  node                 = [for v in local.listed_master_nodes : v.ip][0]
+  node                 = [for v in local.listed_control_plane_nodes : v.ip][0]
 }
 ### Control plane nodes ###
 
 ## Worker nodes ###
 data "talos_machine_configuration" "worker" {
   cluster_name     = var.cluster_name
-  cluster_endpoint = "https://${local.support_node_ip}:6443"
+  cluster_endpoint = "https://${local.support_lxc_ip}:6443"
   machine_type     = "worker"
   machine_secrets  = talos_machine_secrets.cluster_machine_secret.machine_secrets
 }
@@ -61,7 +61,7 @@ data "talos_machine_configuration" "worker" {
 
 resource "talos_machine_configuration_apply" "worker" {
   depends_on = [
-    talos_machine_bootstrap.controlplane
+    talos_machine_bootstrap.control_plane
   ]
   for_each                    = { for node in local.listed_worker_nodes : "${node.name}-${node.i}" => node }
   client_configuration        = talos_machine_secrets.cluster_machine_secret.client_configuration
@@ -70,6 +70,7 @@ resource "talos_machine_configuration_apply" "worker" {
   config_patches = [
     templatefile("${path.module}/config/worker.yaml.tmpl", {
       hostname     = "${var.cluster_name}-${each.key}",
+      node_taints = each.value.taints
       install_disk = each.value.install_disk
       #   cilium_install = file("${path.module}/kubernetes/cilium-install.yaml")
       #   zfs_setup      = file("${path.module}/kubernetes/zfs-setup.yaml")
@@ -78,7 +79,7 @@ resource "talos_machine_configuration_apply" "worker" {
   ]
   lifecycle {
     replace_triggered_by = [
-      proxmox_virtual_environment_vm.talos-worker
+      proxmox_virtual_environment_vm.talos_worker
     ]
   }
 }
@@ -86,7 +87,7 @@ resource "talos_machine_configuration_apply" "worker" {
 
 
 resource "talos_cluster_kubeconfig" "cluster_kubeconfig" {
-  depends_on           = [talos_machine_bootstrap.controlplane]
+  depends_on           = [talos_machine_bootstrap.control_plane]
   client_configuration = talos_machine_secrets.cluster_machine_secret.client_configuration
-  node                 = [for v in local.listed_master_nodes : v.ip][0]
+  node                 = [for v in local.listed_control_plane_nodes : v.ip][0]
 }

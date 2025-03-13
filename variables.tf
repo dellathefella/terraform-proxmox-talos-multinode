@@ -1,20 +1,3 @@
-variable "proxmox_node" {
-  description = "Proxmox node to create VMs on."
-  type        = string
-  default     = ""
-}
-variable "proxmox_support_node" {
-  description = "Proxmox node to create VMs on."
-  type        = string
-  default     = ""
-}
-
-variable "ubuntu_version" {
-  description = "Ubuntu version; an additional dependency needs to be installed for NGINX to work correctly in Ubuntu 24.04"
-  type        = number
-  default     = 24
-}
-
 variable "authorized_keys_file" {
   description = "Path to file containing public SSH keys for remoting into nodes."
   type        = string
@@ -59,48 +42,32 @@ EOF
 }
 
 variable "cluster_name" {
-  default     = "k3s"
+  default     = "talos"
   type        = string
   description = "Name of the cluster used for prefixing cluster components (ie nodes)."
 }
 
-variable "support_node_template" {
-  type        = string
-  description = <<EOF
-Proxmox vm to use as a base template for all nodes. Can be a template or
-another vm that supports cloud-init.
-EOF
-}
-
-variable "proxmox_resource_pool" {
-  description = "Resource pool name to use in proxmox to better organize nodes."
-  type        = string
-  default     = ""
-}
-
-variable "support_node_settings" {
-  description = "Default settings values for support nodes"
+variable "support_lxc_settings" {
+  description = "Default settings values for support LXC"
   type = object({
+    node_name = string,
     cores          = number,
-    sockets        = number,
     memory         = number,
     datastore_id   = string,
     disk_size      = number,
-    user           = string,
     network_bridge = string,
   })
   default = {
+    node_name = "pve"
     cores          = 2
-    sockets        = 1
-    memory         = 4096
+    memory         = 1024
     datastore_id   = "local-lvm"
-    disk_size      = 10
-    user           = "support"
+    disk_size      = 4
     network_bridge = "vmbr0"
   }
 }
-variable "master_nodes" {
-  description = "Default settings values for master nodes"
+variable "control_plane_nodes" {
+  description = "Default settings values for control plane nodes"
   type = list(object({
     node_name      = string,
     cores          = number,
@@ -121,7 +88,7 @@ variable "node_pools" {
     node_name = string,
     node_pool_settings = object({
       name           = string,
-      taints         = optional(list(string)),
+      taints         = optional(list(string),[]),
       cores          = number,
       memory         = number,
       datastore_id   = string,

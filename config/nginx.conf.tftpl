@@ -6,7 +6,7 @@ events {
 
 stream {
     upstream talos_servers_k8s_api {
-        %{ for host in talos_server_hosts ~}
+        %{ for host in talos_control_plane_nodes ~}
         server ${host};
         %{ endfor ~}
     }
@@ -17,7 +17,7 @@ stream {
     }
 
     upstream talos_servers_talos_api {
-        %{ for host in talos_server_hosts ~}
+        %{ for host in talos_control_plane_nodes ~}
         server ${host};
         %{ endfor ~}
     }
