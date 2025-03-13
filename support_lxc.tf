@@ -8,20 +8,21 @@ locals {
 }
 
 
-resource "proxmox_virtual_environment_download_file" "latest_ubuntu_24_noble_qcow2_img" {
-  content_type = "iso"
+resource "proxmox_virtual_environment_download_file" "latest_ubuntu_24_noble_lxc_img" {
+  content_type = "vztmpl"
   datastore_id = "local"
-  node_name    = length(var.proxmox_support_node) == 0 ? var.proxmox_node : var.proxmox_support_node
-  url          = "https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img"
+  file_name = "${var.cluster_name}-ubuntu-24.04-standard_24.04-2_amd64.tar.zst"
+  node_name = local.support_lxc_settings.node_name
+    url          = "http://download.proxmox.com/images/system/ubuntu-24.04-standard_24.04-2_amd64.tar.zst"
 }
 
 
 
-resource "proxmox_virtual_environment_vm" "talos_support" {
+resource "proxmox_virtual_environment_container" "talos_support" {
   description = "Support LXC for Talos Cluster - ${join("-", [var.cluster_name, "support"])}"
   tags        = ["terraform", "ubuntu", "${var.cluster_name}","support","lxc"]
 
-  node_name = support_lxc_settings.node_name
+  node_name = local.support_lxc_settings.node_name
 
   cpu {
     cores = local.support_lxc_settings.cores
@@ -65,9 +66,7 @@ resource "proxmox_virtual_environment_vm" "talos_support" {
   }
   
   operating_system {
-    template_file_id = proxmox_virtual_environment_download_file.latest_ubuntu_22_jammy_lxc_img.id
-    # Or you can use a volume ID, as obtained from a "pvesm list <storage>"
-    # template_file_id = "local:vztmpl/jammy-server-cloudimg-amd64.tar.gz"
+    template_file_id = proxmox_virtual_environment_download_file.latest_ubuntu_24_noble_lxc_img.id
     type             = "ubuntu"
   }
 
@@ -77,7 +76,7 @@ resource "proxmox_virtual_environment_vm" "talos_support" {
 
   provisioner "file" {
     destination = "/tmp/install.sh"
-    content = templatefile("${path.module}/scripts/install-support-apps.sh.tftpl", {
+    content = templatefile("${path.module}/scripts/install-support-nginx.sh.tftpl", {
       http_proxy     = var.http_proxy
     })
   }
@@ -100,12 +99,12 @@ resource "random_password" "support_lxc_password" {
 resource "null_resource" "talos_nginx_config" {
 
   depends_on = [
-    proxmox_virtual_environment_vm.talos_support
+    proxmox_virtual_environment_container.talos_support
   ]
 
   triggers = {
     config_change       = filemd5("${path.module}/config/nginx.conf.tftpl")
-    master_nodes_change = "${length(local.listed_master_nodes)}"
+    master_nodes_change = "${length(local.listed_control_plane_nodes)}"
     worker_nodes_change = "${length(local.listed_worker_nodes)}"
   }
 
@@ -119,10 +118,10 @@ resource "null_resource" "talos_nginx_config" {
   provisioner "file" {
     destination = "/tmp/nginx.conf"
     content = templatefile("${path.module}/config/nginx.conf.tftpl", {
-      talos_server_hosts = [for master_node in local.listed_master_nodes :
-        "${master_node.ip}:6443"
+      talos_control_plane_nodes = [for control_plane in local.listed_control_plane_nodes :
+        "${control_plane.ip}:6443"
       ]
-      talos_nodes = concat([for master_node in local.listed_master_nodes : master_node.ip], [for node in local.listed_worker_nodes : node.ip])
+      talos_nodes = concat([for control_plane in local.listed_control_plane_nodes : control_plane.ip], [for worker_node in local.listed_worker_nodes : worker_node.ip])
     })
   }
 
