@@ -18,6 +18,9 @@ machine:
           - rw
 
 cluster:
+  etcd:
+    extraArgs:
+      quota-backend-bytes: 8589934592
   clusterName: ${cluster_name}
   allowSchedulingOnControlPlanes: false
   inlineManifests:
