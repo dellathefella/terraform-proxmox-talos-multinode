@@ -1,11 +1,15 @@
 load_module /usr/lib/nginx/modules/ngx_stream_module.so;
 
+worker_rlimit_nofile 40000;
+
 events {
-    worker_connections 786;
+    worker_connections ${nginx_worker_connections};
+    multi_accept on;
 }
 
 stream {
     upstream talos_control_plane_k8s_api {
+        least_conn;
         %{ for host in talos_control_plane_nodes ~}
         server ${host}:6443;
         %{ endfor ~}
@@ -17,6 +21,7 @@ stream {
     }
 
     upstream talos_api_50000 {
+        least_conn;
         %{ for host in talos_nodes ~}
         server ${host}:50000;
         %{ endfor ~}
@@ -28,6 +33,7 @@ stream {
     }
 
     upstream talos_api_50001 {
+        least_conn;
         %{ for host in talos_nodes ~}
         server ${host}:50001;
         %{ endfor ~}
@@ -40,6 +46,7 @@ stream {
 
 %{ for additional_lb_control_plane_node_port in additional_lb_control_plane_node_ports ~}
     upstream talos_control_plane_${additional_lb_control_plane_node_port} {
+        least_conn;
         %{ for host in talos_control_plane_nodes ~}
         server ${host}:${additional_lb_control_plane_node_port};
         %{ endfor ~}
@@ -53,6 +60,7 @@ stream {
 
 
     upstream talos_nodes_ingress_https {
+        least_conn;
         %{ for ip in talos_nodes ~}
         server ${ip}:443;
         %{ endfor ~}
@@ -64,6 +72,7 @@ stream {
     }
 
     upstream talos_nodes_ingress_http {
+        least_conn;
         %{ for ip in talos_nodes ~}
         server ${ip}:80;
         %{ endfor ~}
@@ -76,6 +85,7 @@ stream {
     
 %{ for additional_lb_worker_node_port in additional_lb_worker_node_ports ~}
     upstream talos_workers_${additional_lb_worker_node_port} {
+        least_conn;
         %{ for ip in talos_nodes ~}
         server ${ip}:${additional_lb_worker_node_port};
         %{ endfor ~}

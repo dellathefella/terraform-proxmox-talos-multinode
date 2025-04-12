@@ -119,6 +119,7 @@ resource "null_resource" "talos_nginx_config" {
     worker_nodes_change = "${length(local.listed_worker_nodes)}"
     additional_lb_worker_node_ports = "${length(local.cluster_lb_lxc_settings.additional_lb_worker_node_ports)}"
     additional_lb_control_plane_node_ports = "${length(local.cluster_lb_lxc_settings.additional_lb_control_plane_node_ports)}"
+    nginx_worker_connections = "${local.cluster_lb_lxc_settings.nginx_worker_connections}"
   }
 
   connection {
@@ -134,6 +135,7 @@ resource "null_resource" "talos_nginx_config" {
       talos_control_plane_nodes = [for control_plane_node in local.listed_control_plane_nodes: control_plane_node.ip]
       additional_lb_worker_node_ports = local.cluster_lb_lxc_settings.additional_lb_worker_node_ports
       additional_lb_control_plane_node_ports = local.cluster_lb_lxc_settings.additional_lb_control_plane_node_ports
+      nginx_worker_connections = local.cluster_lb_lxc_settings.nginx_worker_connections
       talos_nodes = concat([for control_plane in local.listed_control_plane_nodes : control_plane.ip], [for worker_node in local.listed_worker_nodes : worker_node.ip])
     })
   }
