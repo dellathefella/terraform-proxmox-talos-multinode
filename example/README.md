@@ -1,4 +1,4 @@
-# terraform-proxmox-k3s-multi-node
+# terraform-proxmox-talos-multi-node
 
 This is an example project for setting up your own K3s cluster at home.
 
@@ -7,17 +7,12 @@ This is an example project for setting up your own K3s cluster at home.
 ### VMs
 This will spin up:
 
-- 1 Support VM with API LoadBalancer and optionally MariaDB K3s database with 2 cores and 8GB of RAM. If embedded etcd only the LoadBalancer is deployed.
-- 3 master nodes spread across each PVE host with 2 cores and 2GB of RAM
-- 2 node pool with 2 worker nodes each having 8 cores and 10GB of RAM
+- 1 Support LXC with NGINX LoadBalancer
+- 3 master nodes
+- 1 node pool with 3 worker nodes each having 8 cores and 10GB of RAM
 
 
 ### Networking
-
-- The support VM will be spun up on nodes `pve-prd0` using at `10.0.6.0`
-- The masters VMs will be spun up on nodes `pve-prd0`,`pve-prd1` and `pve-prd2` using at `10.10.2.1-10.10.1.3`
-- The masters VMs will be spun up on nodes `pve-prd0`,`pve-prd1` and `pve-prd2` using at `10.10.2.9,10.10.2.17,10.10.2.25`
-
 > Note: To eliminate potential IP clashing with existing computers on your
 network, it is **STRONGLY** recommended that you take IPs out of your DHCP server's rotation. Otherwise other computers
 in your network may already be using these IPs and that will create conflicts!
