@@ -79,7 +79,7 @@ variable "control_plane_nodes" {
     cores          = number,
     memory         = number,
     datastore_id   = string,
-    disk_size      = string,
+    disk_size      = number,
     network_bridge = string,
     install_disk   = optional(string, "/dev/sda")
   }))
