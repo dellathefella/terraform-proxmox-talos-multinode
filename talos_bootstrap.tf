@@ -86,7 +86,7 @@ resource "talos_machine_configuration_apply" "worker" {
   client_configuration        = talos_machine_secrets.cluster_machine_secret.client_configuration
   machine_configuration_input = data.talos_machine_configuration.worker.machine_configuration
   node                        = each.value.ip
-  config_patches = [
+  config_patches = each.value.gpu != null ? [
     templatefile("${path.module}/config/worker.tmpl.yaml", {
       hostname     = "${var.cluster_name}-${each.key}",
       bgp          = var.bgp
@@ -94,8 +94,18 @@ resource "talos_machine_configuration_apply" "worker" {
       install_disk = each.value.install_disk
       nodepool     = each.value.nodepool_name
     }),
-    #file("${path.module}/config/falco-patch.yaml"),
+    file("${path.module}/talos/nvidia-patches/gpu-worker-patch.yaml"),
+    file("${path.module}/talos/nvidia-patches/nvidia-default-runtimeclass.yaml"),
+    ] : [
+    templatefile("${path.module}/config/worker.tmpl.yaml", {
+      hostname     = "${var.cluster_name}-${each.key}",
+      bgp          = var.bgp
+      node_taints  = each.value.taints
+      install_disk = each.value.install_disk
+      nodepool     = each.value.nodepool_name
+    }),
   ]
+
   lifecycle {
     replace_triggered_by = [
       proxmox_virtual_environment_vm.talos_worker

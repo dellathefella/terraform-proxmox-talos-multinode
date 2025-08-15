@@ -9,6 +9,11 @@ variable "authorized_private_key_file" {
   default     = "~/.ssh/id_rsa"
 }
 
+variable "cluster_talos_version" {
+  default = "v1.10.6"
+  type    = string
+}
+
 variable "network_gateway" {
   description = "IP address of the network gateway."
   type        = string
@@ -43,8 +48,8 @@ EOF
 
 variable "bgp" {
   description = "Used for node labels when setting up BGP forwarding with Cilium."
-  default = 65020
-  type    = number
+  default     = 65020
+  type        = number
 }
 
 variable "cluster_name" {
@@ -109,8 +114,8 @@ variable "node_pools" {
       install_disk      = optional(string, "/dev/sda")
       install_disk_size = optional(number, 48)
       data_disk_size    = optional(number, 96)
-      # BGP is for Cilium labels
-      network_bridge = string,
+      gpu               = optional(string)
+      network_bridge    = string,
     })
   }))
 

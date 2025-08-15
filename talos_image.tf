@@ -2,9 +2,9 @@ locals {
   factory_url = "https://factory.talos.dev"
   platform    = "nocloud"
   arch        = "amd64"
-  version     = "v1.10.6"
+  version     = var.cluster_talos_version
 
-  schematic    = file("${path.module}/talos/schematics.yaml")
+  schematic    = file("${path.module}/talos/schematic.yaml")
   schematic_id = jsondecode(data.http.schematic_id.response_body)["id"]
   image_id     = "${local.schematic_id}_${local.version}"
 
