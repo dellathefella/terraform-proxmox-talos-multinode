@@ -47,7 +47,7 @@ variable "cluster_name" {
   description = "Name of the cluster used for prefixing cluster components (ie nodes)."
 }
 
-variable "cluster_lb_lxc_settings" {
+variable "cluster_lb_vm_settings" {
   description = "Default settings values for cluster LB LXC"
   type = object({
     node_name      = string,
@@ -56,20 +56,16 @@ variable "cluster_lb_lxc_settings" {
     datastore_id   = string,
     disk_size      = number,
     network_bridge = string,
-    additional_lb_worker_node_ports = optional(list(number),[])
-    additional_lb_control_plane_node_ports = optional(list(number),[])
-    nginx_worker_connections = optional(number, 768)
+    nginx_worker_connections = optional(number, 65536)
   })
   default = {
     node_name      = "pve"
     cores          = 2
-    memory         = 512
+    memory         = 2048
     datastore_id   = "local-lvm"
-    disk_size      = 4
+    disk_size      = 16
     network_bridge = "vmbr0"
-    nginx_worker_connections = 768
-    additional_lb_worker_node_ports = []
-    additional_lb_control_plane_node_ports = []
+    nginx_worker_connections = 65536
   }
 }
 variable "control_plane_nodes" {

@@ -1,9 +1,13 @@
-output "cluster_lb_lxc_ip" {
-  value = local.cluster_lb_lxc_ip
+output "cluster_lb_vm_ip" {
+  value = local.cluster_lb_vm_ip
 }
 
-output "cluster_lb_lxc_user" {
-  value = "root"
+output "cluster_lb_vm_user" {
+  value = "ubuntu"
+}
+
+output "cluster_client_configuration" {
+  value = data.talos_client_configuration.cluster_client_configuration.talos_config
 }
 
 output "talos_control_plane_ips" {

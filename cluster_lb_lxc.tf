@@ -1,78 +1,94 @@
 locals {
-  cluster_lb_lxc_settings = var.cluster_lb_lxc_settings
-  cluster_lb_lxc_ip       = cidrhost(var.control_plane_subnet, 0)
+  cluster_lb_vm_settings = var.cluster_lb_vm_settings
+  cluster_lb_vm_ip       = cidrhost(var.control_plane_subnet, 0)
 }
 
 locals {
   lan_subnet_cidr_bitnum = split("/", var.lan_subnet)[1]
 }
 
-
-resource "proxmox_virtual_environment_download_file" "latest_ubuntu_24_noble_lxc_img" {
-  content_type = "vztmpl"
+resource "proxmox_virtual_environment_file" "cluster_lb_meta_data_cloud_config" {
+  content_type = "snippets"
   datastore_id = "local"
-  file_name    = "${var.cluster_name}-ubuntu-24.04-standard_24.04-2_amd64.tar.zst"
-  node_name    = local.cluster_lb_lxc_settings.node_name
-  url          = "http://download.proxmox.com/images/system/ubuntu-24.04-standard_24.04-2_amd64.tar.zst"
+  node_name    = local.cluster_lb_vm_settings.node_name
+
+  source_raw {
+    data = <<-EOF
+    #cloud-config
+    local-hostname: ${var.cluster_name}-cluster-lb
+    EOF
+
+    file_name = "${var.cluster_name}-cluster-lb-meta-data-cloud-config.yaml"
+  }
+}
+
+resource "proxmox_virtual_environment_download_file" "latest_ubuntu_24_noble_qcow2_img" {
+  content_type = "iso"
+  datastore_id = "local"
+  file_name    = "${var.cluster_name}-ubuntu-24.04-noble-server-cloudimg-amd64.img"
+  node_name     = local.cluster_lb_vm_settings.node_name
+  url          = "https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img"
 }
 
 
-
-resource "proxmox_virtual_environment_container" "cluster_lb" {
-  description = "Support LXC for Talos Cluster - ${var.cluster_name}-cluster-lb"
-  tags        = ["terraform", "ubuntu", "${var.cluster_name}", "nginx", "lxc"]
-
-  node_name    = local.cluster_lb_lxc_settings.node_name
-  unprivileged = true
+resource "proxmox_virtual_environment_vm" "cluster_lb" {
+  description = "Support VM for Talos Cluster - ${var.cluster_name}-cluster-lb"
+  tags        = ["terraform", "ubuntu", "${var.cluster_name}", "nginx", "vm"]
+  name = "${var.cluster_name}-cluster-lb"
+  node_name    = local.cluster_lb_vm_settings.node_name
+  
+  stop_on_destroy = true
   cpu {
-    cores = local.cluster_lb_lxc_settings.cores
+    cores = local.cluster_lb_vm_settings.cores
+    type  = "x86-64-v2-AES" # recommended for modern CPUs
+  }
+  
+  agent {
+    enabled = false
   }
 
   memory {
-    dedicated = local.cluster_lb_lxc_settings.memory
-    swap      = local.cluster_lb_lxc_settings.memory / 2
+    dedicated = local.cluster_lb_vm_settings.memory
+    floating = local.cluster_lb_vm_settings.memory
   }
 
   disk {
-    datastore_id = local.cluster_lb_lxc_settings.datastore_id
-    size         = local.cluster_lb_lxc_settings.disk_size
+    file_id = proxmox_virtual_environment_download_file.latest_ubuntu_24_noble_qcow2_img.id
+    datastore_id = local.cluster_lb_vm_settings.datastore_id
+    size         = local.cluster_lb_vm_settings.disk_size
+    interface = "virtio0"
   }
 
   initialization {
-    hostname = "${var.cluster_name}-cluster-lb"
     ip_config {
       ipv4 {
-        address = "${local.cluster_lb_lxc_ip}/${local.lan_subnet_cidr_bitnum}"
+        address = "${local.cluster_lb_vm_ip}/${local.lan_subnet_cidr_bitnum}"
         gateway = var.network_gateway
       }
     }
-
+    meta_data_file_id = proxmox_virtual_environment_file.cluster_lb_meta_data_cloud_config.id
     user_account {
       keys     = [trimspace(file(var.authorized_keys_file))]
-      password = random_password.cluster_lb_lxc_password.result
+      password = random_password.cluster_lb_vm_password.result
+      username = "ubuntu"
     }
 
   }
-
-  network_interface {
-    name = local.cluster_lb_lxc_settings.network_bridge
+  network_device {
+    bridge = local.cluster_lb_vm_settings.network_bridge
   }
 
   operating_system {
-    template_file_id = proxmox_virtual_environment_download_file.latest_ubuntu_24_noble_lxc_img.id
-    type             = "ubuntu"
+    type = "l26"
   }
 
-  features {
-    nesting = true
+  tpm_state {
+    version = "v2.0"
   }
-
-
-
 
 }
 
-resource "random_password" "cluster_lb_lxc_password" {
+resource "random_password" "cluster_lb_vm_password" {
   length           = 16
   special          = false
   override_special = "_%@"
@@ -80,13 +96,13 @@ resource "random_password" "cluster_lb_lxc_password" {
 
 resource "null_resource" "talos_nginx_install" {
   depends_on = [
-    proxmox_virtual_environment_container.cluster_lb
+    proxmox_virtual_environment_vm.cluster_lb
   ]
 
   connection {
     type        = "ssh"
-    user        = "root"
-    host        = local.cluster_lb_lxc_ip
+    user        = "ubuntu"
+    host        = local.cluster_lb_vm_ip
     private_key = file(var.authorized_private_key_file)
   }
 
@@ -109,23 +125,20 @@ resource "null_resource" "talos_nginx_install" {
 resource "null_resource" "talos_nginx_config" {
 
   depends_on = [
-    proxmox_virtual_environment_container.cluster_lb,
+    proxmox_virtual_environment_vm.cluster_lb,
     null_resource.talos_nginx_install
   ]
 
   triggers = {
     config_change       = filemd5("${path.module}/config/nginx.conf.tftpl")
     control_plane_nodes_change = "${length(local.listed_control_plane_nodes)}"
-    worker_nodes_change = "${length(local.listed_worker_nodes)}"
-    additional_lb_worker_node_ports = "${length(local.cluster_lb_lxc_settings.additional_lb_worker_node_ports)}"
-    additional_lb_control_plane_node_ports = "${length(local.cluster_lb_lxc_settings.additional_lb_control_plane_node_ports)}"
-    nginx_worker_connections = "${local.cluster_lb_lxc_settings.nginx_worker_connections}"
+    nginx_worker_connections = "${local.cluster_lb_vm_settings.nginx_worker_connections}"
   }
 
   connection {
     type        = "ssh"
-    user        = "root"
-    host        = local.cluster_lb_lxc_ip
+    user        = "ubuntu"
+    host        = local.cluster_lb_vm_ip
     private_key = file(var.authorized_private_key_file)
   }
 
@@ -133,10 +146,7 @@ resource "null_resource" "talos_nginx_config" {
     destination = "/tmp/nginx.conf"
     content = templatefile("${path.module}/config/nginx.conf.tftpl", {
       talos_control_plane_nodes = [for control_plane_node in local.listed_control_plane_nodes: control_plane_node.ip]
-      additional_lb_worker_node_ports = local.cluster_lb_lxc_settings.additional_lb_worker_node_ports
-      additional_lb_control_plane_node_ports = local.cluster_lb_lxc_settings.additional_lb_control_plane_node_ports
-      nginx_worker_connections = local.cluster_lb_lxc_settings.nginx_worker_connections
-      talos_nodes = concat([for control_plane in local.listed_control_plane_nodes : control_plane.ip], [for worker_node in local.listed_worker_nodes : worker_node.ip])
+      nginx_worker_connections = local.cluster_lb_vm_settings.nginx_worker_connections
     })
   }
 

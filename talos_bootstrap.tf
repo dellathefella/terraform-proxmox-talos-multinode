@@ -1,4 +1,6 @@
-resource "talos_machine_secrets" "cluster_machine_secret" {}
+resource "talos_machine_secrets" "cluster_machine_secret" {
+  talos_version = local.version
+}
 
 
 data "talos_client_configuration" "cluster_client_configuration" {
@@ -7,7 +9,7 @@ data "talos_client_configuration" "cluster_client_configuration" {
   ]
   cluster_name         = var.cluster_name
   client_configuration = talos_machine_secrets.cluster_machine_secret.client_configuration
-  endpoints            = concat([for k, v in local.listed_control_plane_nodes : v.ip], [local.cluster_lb_lxc_ip])
+  endpoints            = concat([for k, v in local.listed_control_plane_nodes : v.ip], [local.cluster_lb_vm_ip])
   nodes                = [for k, v in local.listed_worker_nodes : v.ip]
 }
 
@@ -17,7 +19,7 @@ data "talos_machine_configuration" "control_plane" {
     null_resource.talos_nginx_install
   ]
   cluster_name     = var.cluster_name
-  cluster_endpoint = "https://${local.cluster_lb_lxc_ip}:6443"
+  cluster_endpoint = "https://${local.cluster_lb_vm_ip}:6443"
   machine_type     = "controlplane"
   machine_secrets  = talos_machine_secrets.cluster_machine_secret.machine_secrets
 }
@@ -67,7 +69,7 @@ data "talos_machine_configuration" "worker" {
     null_resource.talos_nginx_install
   ]
   cluster_name     = var.cluster_name
-  cluster_endpoint = "https://${local.cluster_lb_lxc_ip}:6443"
+  cluster_endpoint = "https://${local.cluster_lb_vm_ip}:6443"
   machine_type     = "worker"
   machine_secrets  = talos_machine_secrets.cluster_machine_secret.machine_secrets
 }

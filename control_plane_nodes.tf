@@ -15,7 +15,7 @@ locals {
 
 resource "proxmox_virtual_environment_vm" "talos_control_plane" {
   depends_on = [
-    proxmox_virtual_environment_container.cluster_lb
+    proxmox_virtual_environment_vm.cluster_lb
   ]
   for_each    = local.mapped_control_plane_nodes
   name        = each.value.name
