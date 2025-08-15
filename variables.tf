@@ -42,6 +42,7 @@ EOF
 }
 
 variable "bgp" {
+  description = "Used for node labels when setting up BGP forwarding with Cilium."
   default = 65020
   type    = number
 }
