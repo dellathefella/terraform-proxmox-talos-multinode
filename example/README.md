@@ -4,6 +4,9 @@ This is an example project for setting up your own K3s cluster at home.
 
 ## Summary
 
+
+
+
 ### VMs
 This will spin up:
 
@@ -17,6 +20,12 @@ This will spin up:
 network, it is **STRONGLY** recommended that you take IPs out of your DHCP server's rotation. Otherwise other computers
 in your network may already be using these IPs and that will create conflicts!
 Check your router's manual or google it for a step-by-step guide.
+
+### Storage
+Get storage configuration 
+```bash
+talosctl -e 10.0.6.8  -n 10.0.6.8 get disks --insecure
+```
 
 ## Usage
 

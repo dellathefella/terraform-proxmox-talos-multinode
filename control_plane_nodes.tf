@@ -10,7 +10,6 @@ locals {
   mapped_control_plane_nodes = {
     for node in local.listed_control_plane_nodes : "${node.name}" => node
   }
-
 }
 
 resource "proxmox_virtual_environment_vm" "talos_control_plane" {
@@ -45,7 +44,7 @@ resource "proxmox_virtual_environment_vm" "talos_control_plane" {
     datastore_id = each.value.datastore_id
     file_id      = proxmox_virtual_environment_download_file.talos_image[each.value.node_name].id
     interface    = "virtio0"
-    size         = each.value.disk_size
+    size         = each.value.install_disk_size
   }
 
   initialization {

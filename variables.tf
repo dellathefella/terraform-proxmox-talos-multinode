@@ -41,6 +41,11 @@ EOF
   }
 }
 
+variable "bgp" {
+  default = 65020
+  type    = number
+}
+
 variable "cluster_name" {
   default     = "talos"
   type        = string
@@ -50,34 +55,40 @@ variable "cluster_name" {
 variable "cluster_lb_vm_settings" {
   description = "Default settings values for cluster LB LXC"
   type = object({
-    node_name      = string,
-    cores          = number,
-    memory         = number,
-    datastore_id   = string,
-    disk_size      = number,
-    network_bridge = string,
+    node_name                = string,
+    cores                    = number,
+    memory                   = number,
+    datastore_id             = string,
+    disk_size                = number,
+    network_bridge           = string,
     nginx_worker_connections = optional(number, 65536)
   })
   default = {
-    node_name      = "pve"
-    cores          = 2
-    memory         = 2048
-    datastore_id   = "local-lvm"
-    disk_size      = 16
-    network_bridge = "vmbr0"
+    node_name                = "pve"
+    cores                    = 2
+    memory                   = 2048
+    datastore_id             = "local-lvm"
+    disk_size                = 16
+    network_bridge           = "vmbr0"
     nginx_worker_connections = 65536
   }
 }
+
+variable "allows_scheduling_on_control_plane_nodes" {
+  type    = bool
+  default = false
+}
+
 variable "control_plane_nodes" {
   description = "Default settings values for control plane nodes"
   type = list(object({
-    node_name      = string,
-    cores          = number,
-    memory         = number,
-    datastore_id   = string,
-    disk_size      = number,
-    network_bridge = string,
-    install_disk   = optional(string, "/dev/sda")
+    node_name         = string,
+    cores             = number,
+    memory            = number,
+    datastore_id      = string,
+    network_bridge    = string,
+    install_disk_size = optional(number, 24)
+    install_disk      = optional(string, "/dev/sda")
   }))
 }
 
@@ -89,18 +100,16 @@ variable "node_pools" {
     subnet    = string,
     node_name = string,
     node_pool_settings = object({
-      name           = string,
-      taints         = optional(list(string), []),
-      cores          = number,
-      memory         = number,
-      datastore_id   = string,
-      install_disk   = optional(string, "/dev/sda")
-      disk_size      = string,
+      name              = string,
+      taints            = optional(list(string), []),
+      cores             = number,
+      memory            = number,
+      datastore_id      = string,
+      install_disk      = optional(string, "/dev/sda")
+      install_disk_size = optional(number, 48)
+      data_disk_size    = optional(number, 96)
+      # BGP is for Cilium labels
       network_bridge = string,
-      additonal_storage = optional(object({
-        datastore_id = string,
-        disk_size    = string,
-      }), null)
     })
   }))
 

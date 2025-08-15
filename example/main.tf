@@ -46,16 +46,16 @@ module "talos" {
 
   # This LXC acts as a load balancer, endpoint and load balancer for the cluster API. Additional ports can be added if needed. 
   cluster_lb_lxc_settings = {
-    node_name = "pve0"
+    node_name      = "pve0"
     cores          = 2
     memory         = 512
     datastore_id   = "jacobian-nvme"
     disk_size      = 2
     network_bridge = "vmbr0"
     # You can specify additional ports to be load balanced via Nginx.
-    additional_lb_worker_node_ports = [31000,31001]
+    additional_lb_worker_node_ports        = [31000, 31001]
     additional_lb_control_plane_node_ports = [9443]
-    nginx_worker_connections = 65536
+    nginx_worker_connections               = 65536
   }
 
   # 10.0.6.1 - 10.0.6.6	(5 available IPs for nodes)
@@ -64,26 +64,26 @@ module "talos" {
   # These are not rolled as a pool but individually.
   control_plane_nodes = [
     {
-      node_name    = "pve0"
-      cores        = 4
-      memory       = 4096
-      datastore_id = "jacobian-nvme"
+      node_name      = "pve0"
+      cores          = 4
+      memory         = 4096
+      datastore_id   = "jacobian-nvme"
       disk_size      = 16
       network_bridge = "vmbr0"
     },
     {
-      node_name    = "pve0"
-      cores        = 4
-      memory       = 4096
-      datastore_id = "jacobian-nvme"
+      node_name      = "pve0"
+      cores          = 4
+      memory         = 4096
+      datastore_id   = "jacobian-nvme"
       disk_size      = 16
       network_bridge = "vmbr0"
     },
     {
-      node_name    = "pve0"
-      cores        = 4
-      memory       = 4096
-      datastore_id = "jacobian-nvme"
+      node_name      = "pve0"
+      cores          = 4
+      memory         = 4096
+      datastore_id   = "jacobian-nvme"
       disk_size      = 16
       network_bridge = "vmbr0"
     }

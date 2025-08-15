@@ -4,9 +4,10 @@ locals {
     [
       for i in range(pool.size) :
       merge(pool.node_pool_settings, {
-        node_name = pool.node_name
-        i         = i
-        ip        = cidrhost(pool.subnet, i)
+        nodepool_name = pool.node_pool_settings.name
+        node_name     = pool.node_name
+        i             = i
+        ip            = cidrhost(pool.subnet, i)
       })
     ]
   ])
@@ -48,7 +49,14 @@ resource "proxmox_virtual_environment_vm" "talos_worker" {
     datastore_id = each.value.datastore_id
     file_id      = proxmox_virtual_environment_download_file.talos_image[each.value.node_name].id
     interface    = "virtio0"
-    size         = each.value.disk_size
+    size         = each.value.install_disk_size
+  }
+
+  disk {
+    datastore_id = each.value.datastore_id
+    interface    = "virtio1"
+    size         = each.value.data_disk_size
+    file_format  = "raw"
   }
 
   initialization {

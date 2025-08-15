@@ -35,14 +35,16 @@ resource "talos_machine_configuration_apply" "control_plane" {
   machine_configuration_input = data.talos_machine_configuration.control_plane.machine_configuration
   node                        = each.value.ip
   config_patches = [
-    templatefile("${path.module}/config/control-plane.yaml.tmpl", {
-      hostname         = "${each.value.name}"
-      cluster_name = var.cluster_name
-      install_disk     = each.value.install_disk
-      longhorn_install = file("${path.module}/kubernetes/longhorn-v1.7.0.yaml")
-      flux_install     = file("${path.module}/kubernetes/flux-v1.5.0.yaml")
-      #   cilium_install = file("${path.module}/kubernetes/cilium-install.yaml")
-      #   zfs_setup      = file("${path.module}/kubernetes/zfs-setup.yaml")
+    templatefile("${path.module}/config/control-plane.tmpl.yaml", {
+      allows_scheduling_on_control_plane_nodes = var.allows_scheduling_on_control_plane_nodes
+      hostname                                 = "${each.value.name}"
+      bgp                                      = var.bgp
+      cluster_name                             = var.cluster_name
+      install_disk                             = each.value.install_disk
+      longhorn_install                         = file("${path.module}/kubernetes/longhorn-v1.9.0.yaml")
+      flux_install                             = file("${path.module}/kubernetes/flux-v2.6.4.yaml")
+      cilium_install                           = file("${path.module}/kubernetes/cilium-install.yaml")
+      cilium_values                            = file("${path.module}/kubernetes/cilium-values.yaml")
     }),
     #file("${path.module}/config/falco-patch.yaml"),
   ]
@@ -85,12 +87,12 @@ resource "talos_machine_configuration_apply" "worker" {
   machine_configuration_input = data.talos_machine_configuration.worker.machine_configuration
   node                        = each.value.ip
   config_patches = [
-    templatefile("${path.module}/config/worker.yaml.tmpl", {
+    templatefile("${path.module}/config/worker.tmpl.yaml", {
       hostname     = "${var.cluster_name}-${each.key}",
+      bgp          = var.bgp
       node_taints  = each.value.taints
       install_disk = each.value.install_disk
-      #   cilium_install = file("${path.module}/kubernetes/cilium-install.yaml")
-      #   zfs_setup      = file("${path.module}/kubernetes/zfs-setup.yaml")
+      nodepool     = each.value.nodepool_name
     }),
     #file("${path.module}/config/falco-patch.yaml"),
   ]

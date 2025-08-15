@@ -1,0 +1,52 @@
+machine:
+  nodeLabels:
+    role: control-plane
+    bgp: "${bgp}"
+  install:
+    disk: ${install_disk}
+  network:
+    hostname: ${hostname}
+# https://www.talos.dev/v1.7/talos-guides/configuration/time-sync/#additional-configuration
+  time:
+    servers:
+      - /dev/ptp0
+
+  kubelet:
+    extraArgs:
+      rotate-server-certificates: true
+    extraMounts:
+      - destination: /var/lib/longhorn
+        type: bind
+        source: /var/lib/longhorn
+        options:
+          - bind
+          - rshared
+          - rw
+
+cluster:
+  network:
+    cni:
+      name: none
+  proxy:
+    disabled: true
+  etcd:
+    extraArgs:
+      quota-backend-bytes: 8589934592
+  clusterName: ${cluster_name}
+  allowSchedulingOnControlPlanes: ${allows_scheduling_on_control_plane_nodes}
+  extraManifests:
+    - https://raw.githubusercontent.com/alex1989hu/kubelet-serving-cert-approver/main/deploy/standalone-install.yaml
+    - https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+  inlineManifests:
+  - name: flux-install
+    contents: |
+      ${indent(6, flux_install)}
+  - name: cilium-values
+    contents: |
+      ${indent(6, cilium_values)}
+  - name: cilium-install
+    contents: |
+      ${indent(6, cilium_install)}
+  - name: longhorn-install
+    contents: |
+      ${indent(6, longhorn_install)}

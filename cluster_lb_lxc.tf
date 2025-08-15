@@ -26,7 +26,7 @@ resource "proxmox_virtual_environment_download_file" "latest_ubuntu_24_noble_qco
   content_type = "iso"
   datastore_id = "local"
   file_name    = "${var.cluster_name}-ubuntu-24.04-noble-server-cloudimg-amd64.img"
-  node_name     = local.cluster_lb_vm_settings.node_name
+  node_name    = local.cluster_lb_vm_settings.node_name
   url          = "https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img"
 }
 
@@ -34,29 +34,29 @@ resource "proxmox_virtual_environment_download_file" "latest_ubuntu_24_noble_qco
 resource "proxmox_virtual_environment_vm" "cluster_lb" {
   description = "Support VM for Talos Cluster - ${var.cluster_name}-cluster-lb"
   tags        = ["terraform", "ubuntu", "${var.cluster_name}", "nginx", "vm"]
-  name = "${var.cluster_name}-cluster-lb"
-  node_name    = local.cluster_lb_vm_settings.node_name
-  
+  name        = "${var.cluster_name}-cluster-lb"
+  node_name   = local.cluster_lb_vm_settings.node_name
+
   stop_on_destroy = true
   cpu {
     cores = local.cluster_lb_vm_settings.cores
     type  = "x86-64-v2-AES" # recommended for modern CPUs
   }
-  
+
   agent {
     enabled = false
   }
 
   memory {
     dedicated = local.cluster_lb_vm_settings.memory
-    floating = local.cluster_lb_vm_settings.memory
+    floating  = local.cluster_lb_vm_settings.memory
   }
 
   disk {
-    file_id = proxmox_virtual_environment_download_file.latest_ubuntu_24_noble_qcow2_img.id
+    file_id      = proxmox_virtual_environment_download_file.latest_ubuntu_24_noble_qcow2_img.id
     datastore_id = local.cluster_lb_vm_settings.datastore_id
     size         = local.cluster_lb_vm_settings.disk_size
-    interface = "virtio0"
+    interface    = "virtio0"
   }
 
   initialization {
@@ -130,9 +130,9 @@ resource "null_resource" "talos_nginx_config" {
   ]
 
   triggers = {
-    config_change       = filemd5("${path.module}/config/nginx.conf.tftpl")
+    config_change              = filemd5("${path.module}/config/nginx.conf.tftpl")
     control_plane_nodes_change = "${length(local.listed_control_plane_nodes)}"
-    nginx_worker_connections = "${local.cluster_lb_vm_settings.nginx_worker_connections}"
+    nginx_worker_connections   = "${local.cluster_lb_vm_settings.nginx_worker_connections}"
   }
 
   connection {
@@ -145,8 +145,8 @@ resource "null_resource" "talos_nginx_config" {
   provisioner "file" {
     destination = "/tmp/nginx.conf"
     content = templatefile("${path.module}/config/nginx.conf.tftpl", {
-      talos_control_plane_nodes = [for control_plane_node in local.listed_control_plane_nodes: control_plane_node.ip]
-      nginx_worker_connections = local.cluster_lb_vm_settings.nginx_worker_connections
+      talos_control_plane_nodes = [for control_plane_node in local.listed_control_plane_nodes : control_plane_node.ip]
+      nginx_worker_connections  = local.cluster_lb_vm_settings.nginx_worker_connections
     })
   }
 
