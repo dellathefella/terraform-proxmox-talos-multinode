@@ -54,12 +54,12 @@ variable "bgp" {
 
 variable "cluster_ipv4_cidr_pool" {
   default = "10.1.0.0/16"
-  type = string
+  type    = string
 }
 
 variable "cluster_cilium_id" {
   default = 2
-  type = number
+  type    = number
 }
 
 variable "cluster_name" {

@@ -109,7 +109,9 @@ resource "talos_machine_configuration_apply" "worker" {
   lifecycle {
     replace_triggered_by = [
       proxmox_virtual_environment_vm.talos_worker
+
     ]
+
   }
 }
 ## Worker nodes ###

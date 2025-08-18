@@ -20,8 +20,8 @@ resource "proxmox_virtual_environment_vm" "talos_control_plane" {
   name        = each.value.name
   description = "Control plane node for Talos Cluster - ${var.cluster_name}"
   tags        = ["terraform", "talos", "${var.cluster_name}", "k8s-control-plane-node"]
-  machine = "q35"
-  node_name = each.value.node_name
+  machine     = "q35"
+  node_name   = each.value.node_name
 
   # if agent is not enabled, the VM may not be able to shutdown properly, and may need to be forced off
   stop_on_destroy = true
@@ -66,6 +66,12 @@ resource "proxmox_virtual_environment_vm" "talos_control_plane" {
 
   tpm_state {
     version = "v2.0"
+  }
+
+  lifecycle {
+    ignore_changes = [
+      disk[0].file_id
+    ]
   }
 }
 

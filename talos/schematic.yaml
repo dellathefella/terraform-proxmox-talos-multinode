@@ -6,4 +6,3 @@ customization:
       - siderolabs/util-linux-tools
       - siderolabs/nvidia-container-toolkit-production
       - siderolabs/nonfree-kmod-nvidia-production
-      - siderolabs/qemu-guest-agent

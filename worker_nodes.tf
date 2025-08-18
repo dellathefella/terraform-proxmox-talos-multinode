@@ -27,7 +27,7 @@ resource "proxmox_virtual_environment_vm" "talos_worker" {
   tags        = ["terraform", "talos", "${var.cluster_name}", "k8s-worker-node"]
   name        = "${var.cluster_name}-${each.value.name}-${each.value.i}"
   node_name   = each.value.node_name
-  machine = "q35"
+  machine     = "q35"
   # if agent is not enabled, the VM may not be able to shutdown properly, and may need to be forced off
   stop_on_destroy = true
 
@@ -90,5 +90,11 @@ resource "proxmox_virtual_environment_vm" "talos_worker" {
       rombar  = true
       xvga    = false
     }
+  }
+
+  lifecycle {
+    ignore_changes = [
+      disk[0].file_id
+    ]
   }
 }
