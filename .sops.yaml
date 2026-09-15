@@ -1,0 +1,14 @@
+# SOPS encryption rules.
+#
+# Usage:
+#   1. Generate an age keypair once:   age-keygen -o ~/.config/sops/age/keys.txt
+#   2. Put your age public key below (and in your team's key list).
+#   3. Encrypt a secrets file:        sops secrets/prod.enc.yaml
+#   4. Decrypt at plan time:          sops -d secrets/prod.enc.yaml > prod.tfvars.json
+#
+# Never commit decrypted tfvars. Add *.tfvars (except *.tfvars.example) to .gitignore.
+creation_rules:
+  - path_regex: secrets/.*\.(yaml|yml|json|tfvars)$
+    encrypted_regex: '^(data|stringData|var)$'
+    age: >
+      age1REPLACE_WITH_YOUR_AGE_PUBLIC_KEY

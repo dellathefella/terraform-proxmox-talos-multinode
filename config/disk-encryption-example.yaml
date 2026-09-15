@@ -1,0 +1,27 @@
+# Example: LUKS2 disk encryption for a Talos node's data disk.
+#
+# Pass this (or your own variant) via `extra_config_patches` on a control plane
+# node or node pool. Requires the `siderolabs/tpm-mds` extension in the
+# schematic for TPM-bound keys, or use KMS instead.
+#
+# Adjust the device name to match the disk you want to encrypt
+# (e.g. the additional_storage disk is virtio1 -> /dev/vdb).
+#
+# Docs: https://www.talos.dev/latest/talos-guides/configuration/disk-encryption/
+apiVersion: v1alpha1
+kind: MachineConfig
+metadata:
+  type: "machine.disks"
+  name: "/dev/vdb"
+spec:
+  device: /dev/vdb
+  partitions:
+    - name: encrypted-data
+      size: 100%
+      type: linux-native
+      encryption:
+        provider: luks2
+        keys:
+          - node:
+              tpm2:
+                lockNode: true

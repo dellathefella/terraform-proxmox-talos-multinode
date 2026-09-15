@@ -1,0 +1,50 @@
+# Nginx (load balancer) metrics exporter, deployed on the LB LXC.
+#
+# Install on the LB (or bake into the install script) and scrape from the cluster:
+#   apt-get install -y prometheus-nginxexporter   # or run the container on the LB
+#
+# Then register it as an Endpoint next to the Talos node metrics.
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-lb-metrics
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack
+spec:
+  ports:
+    - name: metrics
+      port: 9113
+      targetPort: 9113
+---
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: nginx-lb-metrics
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack
+subsets:
+  - addresses:
+      # terraform output -json | jq -r '.cluster_lb_lxc_ip.value, (.lb_secondary_ip.value // empty)'
+      - ip: 10.0.6.1
+    ports:
+      - name: metrics
+        port: 9113
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: nginx-lb-metrics
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack
+spec:
+  selector:
+    matchLabels:
+      release: kube-prometheus-stack
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 30s

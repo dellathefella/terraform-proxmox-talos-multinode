@@ -1,0 +1,111 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup OpenTofu
+        uses: opentofu/setup-opentofu@v1
+
+      - name: Check formatting
+        run: tofu fmt -check -recursive
+
+      - name: Init
+        run: tofu init -backend=false
+
+      - name: Validate
+        run: tofu validate
+
+      - name: Setup tflint
+        uses: terraform-linters/setup-tflint@v4
+
+      - name: Init tflint
+        run: tflint --init
+
+      - name: Run tflint
+        run: tflint --recursive --format=compact
+
+      - name: Setup terraform-docs
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/terraform-docs/terraform-docs/master/install.sh | sh -s -- -b /usr/local/bin
+
+      - name: Check docs are up to date
+        run: |
+          terraform-docs markdown --output-file README.md --output-mode inject .
+          for m in lb control_plane workers talos; do
+            (cd "modules/$m" && terraform-docs markdown --output-file README.md --output-mode inject .)
+          done
+          git diff --exit-code README.md modules/*/README.md || (echo "Docs are out of date. Run terraform-docs locally and commit." && exit 1)
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup OpenTofu
+        uses: opentofu/setup-opentofu@v1
+
+      - name: Run tofu tests
+        env:
+          PROXMOX_VE_ENDPOINT: https://127.0.0.1:8006/
+          PROXMOX_VE_API_TOKEN: test@pam!ci=fakefakefakefakefake
+        run: tofu test
+
+  verify-talos-image:
+    runs-on: ubuntu-latest
+    continue-on-error: true  # Sidero signing scheme may change; don't block the pipeline
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Verify Talos installer signature
+        run: |
+          TALOS_VERSION=$(sed -n '/variable "talos_version"/,/}/p' variables.tf | sed -n 's/.*default[[:space:]]*=[[:space:]]*"\(v[0-9.]*\)".*/\1/p')
+          echo "Verifying ghcr.io/siderolabs/installer:${TALOS_VERSION}"
+          cosign verify ghcr.io/siderolabs/installer:${TALOS_VERSION} \
+            --certificate-oidc-issuer "https://github.com/login/oauth" \
+            --certificate-identity-regexp "^https://github.com/siderolabs/talos/\.github/workflows/release\.yml@refs/tags/${TALOS_VERSION}$"
+
+  plan:
+    if: github.event_name == 'pull_request' && vars.PM_ENDPOINT != ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup OpenTofu
+        uses: opentofu/setup-opentofu@v1
+
+      - name: Init
+        working-directory: ci/plan
+        run: tofu init
+
+      - name: Plan
+        id: plan
+        working-directory: ci/plan
+        env:
+          TF_VAR_pm_endpoint: ${{ vars.PM_ENDPOINT }}
+          PROXMOX_VE_API_TOKEN: ${{ secrets.PM_API_TOKEN }}
+        run: tofu plan -input=false -no-color | tee plan.txt
+
+      - name: Comment plan on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const plan = fs.readFileSync('ci/plan/plan.txt', 'utf8');
+            const body = `### tofu plan\n\n\`\`\`diff\n${plan.slice(0, 60000)}\n\`\`\``;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });

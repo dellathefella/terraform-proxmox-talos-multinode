@@ -6,10 +6,9 @@ export https_proxy="${http_proxy}"
 
 nginx() {
     echo "\e[1;33;4;44mInstalling NGINX and Streaming Module.....\e[0m" &&
-    DEBIAN_FRONTEND=noninteractive sudo -E apt install libnginx-mod-stream -y &&
-    DEBIAN_FRONTEND=noninteractive sudo -E apt install nginx -y &&
+    DEBIAN_FRONTEND=noninteractive sudo -E apt-get update &&
+    DEBIAN_FRONTEND=noninteractive sudo -E apt-get install -y libnginx-mod-stream nginx &&
     echo "\e[1;33;4;44mNGINX installed.\e[0m"
 }
 
-sleep 10 &&
 nginx

@@ -8,39 +8,54 @@ events {
 }
 
 stream {
+    proxy_connect_timeout 5s;
+    proxy_timeout 300s;
+
     upstream talos_control_plane_k8s_api {
         least_conn;
         %{ for host in talos_control_plane_nodes ~}
-        server ${host}:6443;
+        server ${host}:6443 max_fails=3 fail_timeout=10s;
         %{ endfor ~}
     }
 
     server {
         listen 6443;
+        %{ for net in allowed_networks ~}
+        allow ${net};
+        %{ endfor ~}
+        deny all;
         proxy_pass talos_control_plane_k8s_api;
     }
 
     upstream talos_api_50000 {
         least_conn;
         %{ for host in talos_nodes ~}
-        server ${host}:50000;
+        server ${host}:50000 max_fails=3 fail_timeout=10s;
         %{ endfor ~}
     }
 
     server {
         listen 50000;
+        %{ for net in allowed_networks ~}
+        allow ${net};
+        %{ endfor ~}
+        deny all;
         proxy_pass talos_api_50000;
     }
 
     upstream talos_api_50001 {
         least_conn;
         %{ for host in talos_nodes ~}
-        server ${host}:50001;
+        server ${host}:50001 max_fails=3 fail_timeout=10s;
         %{ endfor ~}
     }
 
     server {
         listen 50001;
+        %{ for net in allowed_networks ~}
+        allow ${net};
+        %{ endfor ~}
+        deny all;
         proxy_pass talos_api_50001;
     }
 
@@ -48,51 +63,68 @@ stream {
     upstream talos_control_plane_${additional_lb_control_plane_node_port} {
         least_conn;
         %{ for host in talos_control_plane_nodes ~}
-        server ${host}:${additional_lb_control_plane_node_port};
+        server ${host}:${additional_lb_control_plane_node_port} max_fails=3 fail_timeout=10s;
         %{ endfor ~}
     }
 
     server {
         listen ${additional_lb_control_plane_node_port};
+        %{ for net in allowed_networks ~}
+        allow ${net};
+        %{ endfor ~}
+        deny all;
         proxy_pass talos_control_plane_${additional_lb_control_plane_node_port};
     }
 %{ endfor ~}
 
-
+    # Ingress HTTPS: TLS passthrough (nginx does not terminate; the certificate
+    # presented by the ingress controller inside the cluster is preserved).
     upstream talos_nodes_ingress_https {
         least_conn;
         %{ for ip in talos_nodes ~}
-        server ${ip}:443;
+        server ${ip}:443 max_fails=3 fail_timeout=10s;
         %{ endfor ~}
     }
 
     server {
         listen 443;
+        %{ for net in allowed_networks ~}
+        allow ${net};
+        %{ endfor ~}
+        deny all;
         proxy_pass talos_nodes_ingress_https;
     }
 
     upstream talos_nodes_ingress_http {
         least_conn;
         %{ for ip in talos_nodes ~}
-        server ${ip}:80;
+        server ${ip}:80 max_fails=3 fail_timeout=10s;
         %{ endfor ~}
     }
 
     server {
         listen 80;
+        %{ for net in allowed_networks ~}
+        allow ${net};
+        %{ endfor ~}
+        deny all;
         proxy_pass talos_nodes_ingress_http;
     }
-    
+
 %{ for additional_lb_worker_node_port in additional_lb_worker_node_ports ~}
     upstream talos_workers_${additional_lb_worker_node_port} {
         least_conn;
         %{ for ip in talos_nodes ~}
-        server ${ip}:${additional_lb_worker_node_port};
+        server ${ip}:${additional_lb_worker_node_port} max_fails=3 fail_timeout=10s;
         %{ endfor ~}
     }
 
     server {
         listen ${additional_lb_worker_node_port};
+        %{ for net in allowed_networks ~}
+        allow ${net};
+        %{ endfor ~}
+        deny all;
         proxy_pass talos_workers_${additional_lb_worker_node_port};
     }
 %{ endfor ~}

@@ -7,44 +7,34 @@
     // This is the old node pool:
     node_pools = [
         {
-        # 10.0.6.1 - 10.0.6.6	 (6 available IPs for nodes)
-        subnet = "10.0.6.8/29"
-
-        target_node = "titan"
-        size = 2
+        # 10.0.6.9 - 10.0.6.10 (2 nodes; .8 is the network address)
+        subnet    = "10.0.6.8/29"
+        node_name = "titan"
+        size      = 2
         node_pool_settings = {
           name           = "pool0",
-          taints         = [""]
+          taints         = []
           cores          = 2
-          sockets        = 1
           memory         = 8192
-          storage_type   = "scsi"
-          storage_id     = "nytesolutions-fast-store"
-          disk_size      = "20G"
-          user           = "k3s"
+          datastore_id   = "nytesolutions-fast-store"
+          disk_size      = 20
           network_bridge = "vmbr0"
-          network_tag    = -1
         }
         },
         // This is the new node pool:
         {
-        # 10.0.6.16 - 10.0.6.23 (6 available IPs for nodes)
-        subnet = "10.0.6.16/29"
-
-        target_node = "titan"
-        size = 2
+        # 10.0.6.17 - 10.0.6.18 (2 nodes; .16 is the network address)
+        subnet    = "10.0.6.16/29"
+        node_name = "titan"
+        size      = 2
         node_pool_settings = {
           name           = "pool1",
-          taints         = [""]
+          taints         = []
           cores          = 2
-          sockets        = 1
           memory         = 8192
-          storage_type   = "scsi"
-          storage_id     = "nytesolutions-fast-store"
-          disk_size      = "20G"
-          user           = "k3s"
+          datastore_id   = "nytesolutions-fast-store"
+          disk_size      = 20
           network_bridge = "vmbr0"
-          network_tag    = -1
         }
         }
 // ...
@@ -71,7 +61,7 @@ node pool.
 
 ```sh
 # Note that you will need to change the regex to match nodes from your original node pool
-kubectl get nodes | grep -o "k3s-original-." | xargs kubectl cordon
+kubectl get nodes | grep -o "<cluster_name>-pool0-." | xargs kubectl cordon
 ```
 
 Just to validate, check that only the old nodes have the status of `SchedulingDisabled`.
@@ -102,7 +92,7 @@ correctly, do not continue.
 
 ```sh
 # Don't forget to update the regex with your original pool name!
-kubectl get nodes | grep -o "k3s-original-." | xargs \
+kubectl get nodes | grep -o "<cluster_name>-pool0-." | xargs \
   kubectl drain --ignore-errors --ignore-daemonsets --delete-emptydir-data
 ```
 
@@ -139,7 +129,7 @@ The deleted nodes might still be showing up in `kubectl` with a status of
 
 ```sh
 # Don't forget to update the regex with your original pool name!
-kubectl get nodes | grep -o "k3s-original-." | xargs kubectl delete node
+kubectl get nodes | grep -o "<cluster_name>-pool0-." | xargs kubectl delete node
 # Sometimes this command hangs for a while waiting for the api to clean up.
 # Skip the waiting with Ctrl + C once all the nodes have been logged as deleted
 ```

@@ -1,0 +1,60 @@
+# Talos node metrics scraping for kube-prometheus-stack.
+#
+# Talos exposes node metrics on :8080/metrics (no auth). Fill the Endpoints
+# subsets from `terraform output talos_worker_ips` / `talos_control_plane_ips`
+# (or generate them with a Flux post-build substitution / Helm template).
+#
+# Requires the prometheus-operator CRDs (kube-prometheus-stack).
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: talos-node-metrics
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack
+spec:
+  ports:
+    - name: metrics
+      port: 8080
+      targetPort: 8080
+---
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: talos-node-metrics
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack
+subsets:
+  - addresses:
+      # terraform output -json talos_control_plane_ips | jq -r '.[]'
+      - ip: 10.0.6.2
+      - ip: 10.0.6.3
+      - ip: 10.0.6.4
+      # terraform output -json talos_worker_ips | jq -r '.[]'
+      - ip: 10.0.6.9
+    ports:
+      - name: metrics
+        port: 8080
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: talos-node-metrics
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack
+spec:
+  selector:
+    matchLabels:
+      release: kube-prometheus-stack
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 30s
+      relabelings:
+        - sourceLabels: [__address__]
+          targetLabel: instance
+          regex: "([^:]+):.*"
+          replacement: "$1"

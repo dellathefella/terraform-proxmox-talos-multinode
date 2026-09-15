@@ -1,21 +1,12 @@
 machine:
   install:
-    disk: ${install_disk}
+    disk: ${jsonencode(install_disks)}
   network:
     hostname: ${hostname}
 # https://www.talos.dev/v1.7/talos-guides/configuration/time-sync/#additional-configuration
   time:
     servers:
       - /dev/ptp0
-  kubelet:
-    extraMounts:
-      - destination: /var/lib/longhorn
-        type: bind
-        source: /var/lib/longhorn
-        options:
-          - bind
-          - rshared
-          - rw
 
 cluster:
   etcd:
@@ -23,10 +14,10 @@ cluster:
       quota-backend-bytes: 8589934592
   clusterName: ${cluster_name}
   allowSchedulingOnControlPlanes: false
-  inlineManifests:
-  - name: longhorn-install
-    contents: |
-      ${indent(6, longhorn_install)}
-  - name: flux-install
-    contents: |
-      ${indent(6, flux_install)}
+%{ if length(api_hostnames) > 0 ~}
+  apiServerCert:
+    sans:
+%{ for hostname in api_hostnames ~}
+      - ${hostname}
+%{ endfor ~}
+%{ endif ~}

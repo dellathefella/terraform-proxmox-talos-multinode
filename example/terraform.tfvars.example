@@ -1,0 +1,92 @@
+# Copy this file to terraform.tfvars and adjust the values.
+
+cluster_name = "homelab"
+
+network_gateway = "10.0.0.1"
+lan_subnet      = "10.0.0.0/24"
+
+# LB LXC takes 10.0.6.1, control plane nodes get 10.0.6.2 - 10.0.6.4
+control_plane_subnet = "10.0.6.0/29"
+
+# Only these networks may reach the load balancer ports.
+allowed_networks = ["10.0.0.0/24"]
+
+# Alternative hostnames for the API server certificate.
+api_hostnames = ["talos.example.internal"]
+
+talos_version = "v1.14.1"
+
+# --- Optional: highly available load balancer (keepalived VIP) ---
+# lb_ha_enabled = true
+# lb_vip        = "10.0.6.6"          # free LAN address for the VIP
+# lb_vrrp_router_id = 51
+# lb_secondary_node_name = "pve1"     # put the secondary LB on another PVE node
+
+# --- Optional: Proxmox firewall on the LB LXC(s) (default-deny inbound) ---
+# lb_firewall_enabled = true
+
+cluster_lb_lxc_settings = {
+  node_name      = "pve0"
+  cores          = 2
+  memory         = 512
+  datastore_id   = "local-lvm"
+  disk_size      = 4
+  network_bridge = "vmbr0"
+
+  additional_lb_worker_node_ports        = [31000, 31001]
+  additional_lb_control_plane_node_ports = [9443]
+  nginx_worker_connections               = 65536
+}
+
+control_plane_nodes = [
+  {
+    node_name      = "pve0"
+    cores          = 4
+    memory         = 4096
+    datastore_id   = "local-lvm"
+    disk_size      = 16
+    network_bridge = "vmbr0"
+    # Two disks = mirrored Talos system install (RAID1)
+    install_disks  = ["/dev/sda", "/dev/sdb"]
+  },
+  {
+    node_name      = "pve0"
+    cores          = 4
+    memory         = 4096
+    datastore_id   = "local-lvm"
+    disk_size      = 16
+    network_bridge = "vmbr0"
+  },
+  {
+    node_name      = "pve0"
+    cores          = 4
+    memory         = 4096
+    datastore_id   = "local-lvm"
+    disk_size      = 16
+    network_bridge = "vmbr0"
+  }
+]
+
+node_pools = [
+  {
+    # 10.0.6.9 - 10.0.6.11 (3 nodes; .8 is the network address)
+    subnet    = "10.0.6.8/29"
+    node_name = "pve0"
+    size      = 3
+    node_pool_settings = {
+      name           = "pool0"
+      cores          = 8
+      memory         = 10240
+      datastore_id   = "local-lvm"
+      disk_size      = 120
+      network_bridge = "vmbr0"
+
+      # Optional: extra disk attached as virtio1 and provisioned by Talos
+      # (UserVolumeConfig) for Longhorn at /var/mnt/longhorn.
+      additional_storage = {
+        datastore_id = "local-lvm"
+        disk_size    = 250
+      }
+    }
+  }
+]

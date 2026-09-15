@@ -1,0 +1,35 @@
+vrrp_script chk_nginx {
+    script "/usr/bin/pgrep -x nginx"
+    interval 2
+    weight -20
+    fall 3
+    rise 2
+}
+
+vrrp_instance CLUSTER_LB {
+    state ${state}
+    interface eth0
+    virtual_router_id ${router_id}
+    priority ${priority}
+    advert_int 1
+    garp_master_delay 1
+
+    authentication {
+        auth_type PASS
+        auth_pass ${auth_pass}
+    }
+
+    virtual_ipaddress {
+        ${vip}/32 dev eth0
+    }
+
+    track_script {
+        chk_nginx
+    }
+
+    # Unicast-style safety: only exchange VRRP with the peer LB instance.
+    unicast_src_ip ${node_ip}
+    unicast_peer {
+        ${peer_ip}
+    }
+}

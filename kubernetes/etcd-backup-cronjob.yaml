@@ -1,0 +1,64 @@
+# Hourly etcd snapshots to S3-compatible storage.
+#
+# Setup:
+#   1. The module writes talosconfig to the repo root at apply time:  ./talosconfig
+#   2. kubectl -n etcd-backup create secret generic talos-client-config \
+#        --from-file=talosconfig=./talosconfig
+#   3. Create the S3 credentials secret (see below) and adjust the bucket/region.
+#   4. kubectl apply -f etcd-backup-cronjob.yaml
+#
+# Restore: talosctl etcd restore s3://<bucket>/<prefix>/<snapshot> --restore-from-time=...
+# (see docs/upgrade.md runbook)
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: etcd-backup
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: etcd-snapshot
+  namespace: etcd-backup
+spec:
+  schedule: "0 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 600
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: snapshot
+              image: ghcr.io/siderolabs/talosctl:v1.14.1
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  talosctl etcd backup "s3://${S3_BUCKET}/${S3_PREFIX}/$(date -u +%Y%m%dT%H%M%SZ)" \
+                    --region "${AWS_REGION}" \
+                    --talosconfig /etc/talos/talosconfig \
+                    --nodes "${CP_NODE_IP}"
+              env:
+                - name: S3_BUCKET
+                  value: "my-etcd-backups"
+                - name: S3_PREFIX
+                  value: "talos"
+                - name: AWS_REGION
+                  value: "us-east-1"
+                - name: CP_NODE_IP
+                  value: "10.0.6.2"
+              envFrom:
+                - secretRef:
+                    name: s3-credentials
+              volumeMounts:
+                - name: talosconfig
+                  mountPath: /etc/talos
+                  readOnly: true
+          volumes:
+            - name: talosconfig
+              secret:
+                secretName: talos-client-config
